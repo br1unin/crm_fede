@@ -1,16 +1,23 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import {
+  FiHome,
+  FiUsers,
+  FiTruck,
+  FiShoppingCart,
+  FiUser,
+} from 'react-icons/fi';
+
+const menuItems = [
+  { path: '/', label: 'Dashboard', icon: <FiHome /> },
+  { path: '/clientes', label: 'Clientes', icon: <FiUsers /> },
+  { path: '/tractores', label: 'Tractores', icon: <FiTruck /> },
+  { path: '/ventas', label: 'Ventas', icon: <FiShoppingCart /> },
+  { path: '/perfil', label: 'Perfil', icon: <FiUser /> },
+];
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
-
-  const menuItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
-    { path: '/clientes', label: 'Clientes', icon: '👥' },
-    { path: '/tractores', label: 'Tractores', icon: '🚜' },
-    { path: '/ventas', label: 'Ventas', icon: '💰' },
-    { path: '/perfil', label: 'Perfil', icon: '👤' },
-  ];
 
   return (
     <div className="w-64 bg-gray-800 text-white">
