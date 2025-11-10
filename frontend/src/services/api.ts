@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,13 +9,17 @@ export const api = axios.create({
   },
 });
 
-// Interceptor para agregar el token a las requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+export const setAuthToken = (token: string | null) => {
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common.Authorization;
   }
-  return config;
-});
+};
+
+const bootstrapToken = localStorage.getItem('token');
+if (bootstrapToken) {
+  setAuthToken(bootstrapToken);
+}
 
 export default api;

@@ -1,22 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
-// Definiciones de tipos locales
-interface User {
-  id: number;
-  email: string;
-  name: string;
-  role: 'admin' | 'employee';
-  is_active: boolean;
-  created_at: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  isAuthenticated: boolean;
-}
+import api, { setAuthToken } from '../services/api';
+import type { AuthContextType, TokenResponse, User } from '../types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -32,46 +18,65 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const TOKEN_KEY = 'token';
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const { data } = await api.get<User>('/auth/me');
+      setUser(data);
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error('Failed to fetch user:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem(TOKEN_KEY);
+      setAuthToken(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    if (token && userData) {
-      try {
-        const userObj: User = JSON.parse(userData);
-        setUser(userObj);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      }
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+      setIsLoading(false);
+      return;
     }
+    setAuthToken(token);
+    fetchCurrentUser();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('Login attempt:', email, password);
-      
-      // Simulación de login
-      const mockUser: User = {
-        id: 1,
-        email: email,
-        name: email.split('@')[0],
-        role: email.includes('admin') ? 'admin' : 'employee',
-        is_active: true,
-        created_at: new Date().toISOString()
-      };
-
-      setUser(mockUser);
-      setIsAuthenticated(true);
-      localStorage.setItem('token', 'mock-token');
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      const { data } = await api.post<TokenResponse>('/auth/login', { email, password });
+      localStorage.setItem(TOKEN_KEY, data.access_token);
+      setAuthToken(data.access_token);
+      await fetchCurrentUser();
     } catch (error) {
-      console.error('Login error:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+      localStorage.removeItem(TOKEN_KEY);
+      setAuthToken(null);
+      throw error;
+    }
+  };
+
+  const register = async (name: string, email: string, password: string) => {
+    try {
+      await api.post('/auth/register', {
+        name,
+        email,
+        password,
+        role: 'employee',
+        is_active: true,
+      });
+      await login(email, password);
+    } catch (error) {
       throw error;
     }
   };
@@ -79,23 +84,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem(TOKEN_KEY);
+    setAuthToken(null);
   };
 
   const value: AuthContextType = {
     user,
     login,
+    register,
     logout,
-    isAuthenticated
+    isAuthenticated,
+    isLoading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Exportar el tipo User para usarlo en otros componentes
 export type { User };

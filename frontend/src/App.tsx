@@ -12,7 +12,15 @@ import Sidebar from './components/common/Sidebar';
 import './App.css';
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <p className="text-gray-600">Validando sesión...</p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Login />;
